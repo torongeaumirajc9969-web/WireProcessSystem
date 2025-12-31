@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>人员管理 - 漆包线工艺系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; font-size: 0.9rem; }
+        .card { box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: none; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-dark mb-4 py-2">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-users-cog mr-2"></i>人员权限管理</span>
+            <div class="d-flex align-items-center">
+                <span class="text-white mr-3 small"><i class="fas fa-user-circle"></i> {{ current_user.username }}</span>
+                <a href="/" class="btn btn-secondary btn-sm mr-2">返回首页</a>
+                <a href="/logout" class="btn btn-danger btn-sm">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show">
+                  {{ message }}
+                  <button type="button" class="close" data-dismiss="alert">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white font-weight-bold">
+                        <i class="fas fa-user-plus"></i> 新增账号
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add">
+                            <div class="form-group">
+                                <label>用户名 (Username)</label>
+                                <input type="text" name="username" class="form-control" placeholder="如: zhangsan" required>
+                            </div>
+                            <div class="form-group">
+                                <label>密码 (Password)</label>
+                                <input type="text" name="password" class="form-control" placeholder="设置初始密码" required>
+                            </div>
+                            <div class="form-group">
+                                <label>角色权限 (Role)</label>
+                                <select name="role" class="form-control">
+                                    <option value="operator">Operator (普通操作员)</option>
+                                    <option value="admin">Admin (系统管理员)</option>
+                                </select>
+                                <small class="text-muted">管理员可进入此页面管理人员。</small>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-block">立即创建</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-white font-weight-bold">
+                        <i class="fas fa-users"></i> 现有人员列表
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered mb-0 text-center">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>角色</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td class="font-weight-bold">{{ user.username }}</td>
+                                    <td>
+                                        {% if user.role == 'admin' %}
+                                        <span class="badge badge-primary">管理员</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">操作员</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.username != 'admin' and user.id != current_user.id %}
+                                        <form method="POST" onsubmit="return confirm('确定删除该用户？此操作不可恢复。');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0">删除</button>
+                                        </form>
+                                        {% else %}
+                                        <span class="text-muted small">不可删除</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

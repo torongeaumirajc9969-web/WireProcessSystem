@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-# 初始化数据库组件
+# 初始化数据库组件py
 db = SQLAlchemy()
 
 # 定义“工艺记录单”的样子

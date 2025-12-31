@@ -3,191 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>漆包线生产工艺管理系统</title>
+    <title>漆包线生产工艺管理系统 V6.3 审批版</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
-        body { background-color: #f8f9fa; }
-        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .nav-tabs .nav-link.active { background-color: #fff; border-bottom-color: #fff; font-weight: bold; color: #495057; }
-        .table-hover tbody tr:hover { background-color: #f1f1f1; }
-        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+        body { background-color: #f4f6f9; font-size: 0.85rem; }
+        .card { box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: none; margin-bottom: 15px; }
+        .card-header { font-weight: bold; padding: 0.5rem 1rem; font-size: 0.95rem; }
+        .card-body { padding: 0.8rem; }
+
+        .input-group-text { padding-left: 0.3rem; padding-right: 0.3rem; background-color: #e9ecef; font-weight: bold; color: #555; font-size: 0.8rem; }
+        .form-control { font-size: 0.85rem; height: calc(1.5em + 0.5rem + 2px); padding: 0.25rem 0.5rem; }
+
+        .table td, .table th { vertical-align: middle; padding: 0.4rem; }
+        .section-title { border-left: 3px solid #007bff; padding-left: 8px; margin-bottom: 10px; color: #333; font-weight: bold; font-size: 0.9rem; }
+
+        .bg-tolerance-a { background-color: #e3f2fd; }
+        .bg-tolerance-b { background-color: #fff3e0; }
+
+        .paint-row { background-color: #f8f9fa; padding: 5px 8px; border-radius: 4px; border: 1px solid #eee; height: 100%; }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .custom-switch .custom-control-label::before { height: 1.25rem; width: 2.25rem; border-radius: 1rem; }
+        .custom-switch .custom-control-label::after { width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; }
+        .custom-switch .custom-control-input:checked ~ .custom-control-label::after { transform: translateX(1rem); }
+        .custom-control-label { padding-top: 2px; }
+
+        .side-badge { display: inline-block; width: 20px; text-align: center; border-radius: 3px; color: #fff; font-size: 0.75rem; margin-right: 5px; }
+        .badge-a { background-color: #007bff; }
+        .badge-b { background-color: #ff9800; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-industry mr-2"></i>漆包线生产工艺管理系统</a>
-            <span class="navbar-text text-white-50"><small>Ver 2.0 | 完整版</small></span>
+    <nav class="navbar navbar-dark bg-dark mb-3 py-2">
+        <div class="container-fluid">
+            <div>
+                <span class="navbar-brand mb-0 h1" style="font-size: 1.1rem;"><i class="fas fa-industry mr-2"></i>漆包线生产工艺模型</span>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div class="d-flex align-items-center">
+                <span class="text-white mr-3 small">
+                    <i class="fas fa-user-circle"></i> {{ current_user.username }}
+                    {% if current_user.role == 'admin' %}(管理员){% endif %}
+                </span>
+                <a href="/analysis" class="btn btn-outline-info btn-sm mr-2 py-0" style="font-size: 0.8rem;">
+                    <i class="fas fa-chart-line"></i> 分析
+                </a>
+                <a href="/logout" class="btn btn-danger btn-sm py-0" style="font-size: 0.8rem;">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </a>
+            </div>
+            {% endif %}
         </div>
     </nav>
 
-    <div class="container">
-        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link active" id="process-tab" data-toggle="tab" href="#process" role="tab"><i class="fas fa-clipboard-check text-primary mr-1"></i> 生产工艺记录</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="problem-tab" data-toggle="tab" href="#problem" role="tab"><i class="fas fa-exclamation-triangle text-danger mr-1"></i> 异常问题登记</a>
-            </li>
-        </ul>
+    <div class="container-fluid px-3">
 
-        <div class="tab-content" id="myTabContent">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show py-2 small">
+                  {{ message }}
+                  <button type="button" class="close py-2" data-dismiss="alert">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-            <div class="tab-pane fade show active" id="process" role="tabpanel">
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white"><i class="fas fa-plus-circle"></i> 新增工艺参数</div>
-                    <div class="card-body">
-                        <form action="/" method="POST">
-                            <div class="form-row">
-                                <div class="form-group col-md-3">
-                                    <label>机台编号</label>
-                                    <select class="form-control" name="machine_model" required>
-                                        <option value="" disabled selected>请选择...</option>
-                                        {% for i in range(1, 8) %}<option value="{{ i }}号机">{{ i }}号机</option>{% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-group col-md-3">
-                                    <label>产品型号</label>
-                                    <input type="text" class="form-control" name="product_type" placeholder="如: UEW/155" required>
-                                </div>
-                                <div class="form-group col-md-3">
-                                    <label>规格 (mm)</label>
-                                    <input type="text" class="form-control" name="wire_spec" placeholder="如: 0.050" required>
-                                </div>
-                                <div class="form-group col-md-3">
-                                    <label>线速 (DV值)</label>
-                                    <input type="text" class="form-control" name="wire_speed" placeholder="可选填">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary px-5"><i class="fas fa-save"></i> 保存工艺</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-list"></i> 历史工艺列表</span>
-                        <a href="/export_all" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> 导出完整生产日志</a>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>时间</th>
-                                    <th>机台</th>
-                                    <th>产品型号</th>
-                                    <th>规格</th>
-                                    <th>线速</th>
-                                    <th style="width: 80px;">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for record in records %}
-                                <tr>
-                                    <td class="text-muted">{{ record.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td><span class="badge badge-info">{{ record.machine_model }}</span></td>
-                                    <td><strong>{{ record.product_type }}</strong></td>
-                                    <td>{{ record.wire_spec }}</td>
-                                    <td>{{ record.wire_speed }}</td>
-                                    <td>
-                                        <a href="/delete_process/{{ record.id }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('确认删除？')"><i class="fas fa-trash-alt"></i></a>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="6" class="text-center py-4 text-muted">暂无数据</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        <div class="card">
+            <div class="card-header bg-primary text-white py-2">
+                <i class="fas fa-edit"></i> 工艺记录单
             </div>
+            <div class="card-body">
+                <form action="/" method="POST">
 
-            <div class="tab-pane fade" id="problem" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card border-danger mb-3">
-                            <div class="card-header bg-danger text-white"><i class="fas fa-fire"></i> 登记异常</div>
-                            <div class="card-body">
-                                <form action="/add_problem" method="POST">
-                                    <div class="form-group">
-                                        <label>发生机台</label>
-                                        <select class="form-control" name="machine_model" required>
-                                            <option value="" disabled selected>请选择...</option>
-                                            {% for i in range(1, 8) %}<option value="{{ i }}号机">{{ i }}号机</option>{% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label>产品型号</label>
-                                            <input type="text" class="form-control" name="product_type" placeholder="如: UEW" required>
-                                        </div>
-                                        <div class="form-group col-md-6">
-                                            <label>规格</label>
-                                            <input type="text" class="form-control" name="wire_spec" placeholder="如: 0.05" required>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>问题描述</label>
-                                        <textarea class="form-control" name="issue_desc" rows="3" required></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>解决措施</label>
-                                        <textarea class="form-control" name="solution" rows="3"></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-danger btn-block"><i class="fas fa-exclamation-circle"></i> 提交异常记录</button>
-                                </form>
+                    <div class="form-row align-items-center mb-2">
+                        <div class="col-md-2">
+                            <div class="section-title mb-0">基础生产信息</div>
+                        </div>
+                        <div class="col-md-10 text-right">
+                            <div class="custom-control custom-switch d-inline-block">
+                                <input type="checkbox" class="custom-control-input" id="sbSwitch" name="is_self_bonding">
+                                <label class="custom-control-label font-weight-bold text-danger" for="sbSwitch" id="sbLabel">是否自粘</label>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-8">
-                        <div class="card">
-                            <div class="card-header bg-white text-danger"><i class="fas fa-history"></i> 近期异常记录</div>
-                            <div class="table-responsive">
-                                <table class="table table-striped mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>时间</th>
-                                            <th>机台</th>
-                                            <th>型号/规格</th>
-                                            <th>问题描述</th>
-                                            <th>解决措施</th>
-                                            <th style="width: 80px;">操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for problem in problems %}
-                                        <tr>
-                                            <td class="small">{{ problem.create_time.strftime('%m-%d %H:%M') }}</td>
-                                            <td><span class="badge badge-danger">{{ problem.machine_model }}</span></td>
-                                            <td class="small">
-                                                <div>{{ problem.product_type }}</div>
-                                                <div class="text-muted">{{ problem.wire_spec }}</div>
-                                            </td>
-                                            <td class="text-danger">{{ problem.issue_desc }}</td>
-                                            <td class="text-success">{{ problem.solution }}</td>
-                                            <td>
-                                                <a href="/delete_problem/{{ problem.id }}" class="btn btn-outline-secondary btn-sm" onclick="return confirm('确认删除？')"><i class="fas fa-times"></i></a>
-                                            </td>
-                                        </tr>
-                                        {% else %}
-                                        <tr><td colspan="6" class="text-center py-4 text-muted">暂无异常记录</td></tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                    <div class="form-row mb-3">
+                        <div class="col-md-3 mb-1">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text">机台</span></div>
+                                <div class="input-group-prepend"><span class="input-group-text bg-white">L</span></div>
+                                <select class="form-control" name="machine_type" id="machineTypeSelect" required>
+                                    <option value="" disabled selected>-</option>
+                                    {% for i in range(1, 8) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+                                </select>
+                                <div class="input-group-prepend"><span class="input-group-text">-</span></div>
+                                <select class="form-control" name="machine_num" required>
+                                    <option value="" disabled selected>-</option>
+                                    {% for i in range(1, 9) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-1">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text">型号</span></div>
+                                <input type="text" class="form-control" name="product_type" placeholder="QZB-2/130" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-1">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text">规格</span></div>
+                                <input type="text" class="form-control" name="wire_spec" placeholder="3.00×6.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-1">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text">速度</span></div>
+                                <input type="number" step="0.1" class="form-control" name="ref_speed" placeholder="m/min">
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <div class="section-title">漆包工艺设定</div>
+                    <div class="row no-gutters mb-3">
+                        <div class="col-md-4 pr-1">
+                            <div class="paint-row d-flex align-items-center">
+                                <span class="mr-2 font-weight-bold small text-muted" style="min-width: 40px;">底漆</span>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-control" name="base_coat_type">
+                                        <option value="无">无</option>
+                                        <option value="1731">1731</option>
+                                        <option value="1748">1748</option>
+                                        <option value="1766">1766</option>
+                                        <option value="225">225</option>
+                                        <option value="31/35">31/35</option>
+                                        <option value="JQ">JQ</option>
+                                        <option value="自粘">自粘</option>
+                                    </select>
+                                    <input type="text" class="form-control" name="base_coat_pass" placeholder="道次" style="max-width: 60px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 px-1">
+                            <div class="paint-row d-flex align-items-center">
+                                <span class="mr-2 font-weight-bold small text-muted" style="min-width: 40px;">中漆</span>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-control" name="mid_coat_type">
+                                        <option value="无" selected>无</option>
+                                        <option value="1731">1731</option>
+                                        <option value="1748">1748</option><option value="1766">1766</option><option value="225">225</option><option value="31/35">31/35</option><option value="JQ">JQ</option><option value="自粘">自粘</option>
+                                    </select>
+                                    <input type="text" class="form-control" name="mid_coat_pass" placeholder="道次" style="max-width: 60px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 pl-1">
+                            <div class="paint-row d-flex align-items-center">
+                                <span class="mr-2 font-weight-bold small text-muted" style="min-width: 40px;">面漆</span>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-control" name="top_coat_type">
+                                        <option value="无">无</option>
+                                        <option value="1731">1731</option>
+                                        <option value="1748">1748</option><option value="1766">1766</option><option value="225">225</option><option value="31/35">31/35</option><option value="JQ">JQ</option><option value="自粘">自粘</option>
+                                    </select>
+                                    <input type="text" class="form-control" name="top_coat_pass" placeholder="道次" style="max-width: 60px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">标准参数 (单位: mm)</div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-header py-1 text-center bg-light small">半成品裸径</div>
+                                <div class="card-body px-2 py-2">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-a">A</span></div>
+                                        <input type="number" step="0.001" class="form-control text-center" name="tol_a_bare_min" placeholder="min">
+                                        <div class="input-group-prepend input-group-append"><span class="input-group-text bg-white border-0">~</span></div>
+                                        <input type="number" step="0.001" class="form-control text-center" name="tol_a_bare_max" placeholder="max">
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-b">B</span></div>
+                                        <input type="number" step="0.001" class="form-control text-center" name="tol_b_bare_min" placeholder="min">
+                                        <div class="input-group-prepend input-group-append"><span class="input-group-text bg-white border-0">~</span></div>
+                                        <input type="number" step="0.001" class="form-control text-center" name="tol_b_bare_max" placeholder="max">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-2">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-header py-1 text-center bg-light small">成品线径 (≤)</div>
+                                <div class="card-body px-2 py-2">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-a">A</span></div>
+                                        <input type="number" step="0.001" class="form-control" name="tol_a_finished_val" placeholder="上限值">
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-b">B</span></div>
+                                        <input type="number" step="0.001" class="form-control" name="tol_b_finished_val" placeholder="上限值">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-2">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-header py-1 text-center bg-light small">漆膜厚度 (≥)</div>
+                                <div class="card-body px-2 py-2">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-a">A</span></div>
+                                        <input type="number" step="0.001" class="form-control" name="tol_a_thickness_val" placeholder="下限值">
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text text-white badge-b">B</span></div>
+                                        <input type="number" step="0.001" class="form-control" name="tol_b_thickness_val" placeholder="下限值">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-2 mb-3">
+                        <textarea class="form-control border-danger" name="remark" rows="1" placeholder="异常记录 / 备注 (例如：炉温波动...)"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning btn-block font-weight-bold py-2"><i class="fas fa-save"></i> 保存记录 (存为草稿)</button>
+                </form>
             </div>
         </div>
-        <footer class="text-center mt-5 mb-3 text-muted"><small>&copy; 2024 漆包线生产部</small></footer>
+
+        <div class="card">
+            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                <span class="font-weight-bold small"><i class="fas fa-list"></i>
+                    {% if current_user.role == 'admin' %}所有提交记录 & 我的草稿{% else %}我的记录{% endif %}
+                </span>
+                <a href="/export_all" class="btn btn-outline-success btn-sm py-0" style="font-size: 0.8rem;"><i class="fas fa-file-excel"></i> 导出已提交</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm text-center mb-0" style="font-size: 0.85rem;">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>时间</th>
+                            <th>操作员</th>
+                            <th>机台</th>
+                            <th>型号</th>
+                            <th>规格</th>
+                            <th>漆工艺</th>
+                            <th>备注</th>
+                            <th style="min-width: 140px;">状态 / 操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr class="{% if not r.is_submitted %}table-warning{% endif %}">
+                            <td class="small text-muted">{{ r.create_time.strftime('%m-%d %H:%M') }}</td>
+                            <td class="font-weight-bold small">{{ r.operator_name }}</td>
+                            <td class="font-weight-bold">{{ r.machine_model }}</td>
+                            <td>{{ r.product_type }}</td>
+                            <td>{{ r.wire_spec }}</td>
+                            <td class="small">{{ r.base_coat_type }}/{{ r.mid_coat_type }}/{{ r.top_coat_type }}</td>
+                            <td class="text-left small text-danger text-truncate" style="max-width: 150px;" title="{{ r.remark }}">{{ r.remark }}</td>
+
+                            <td>
+                                {% if not r.is_submitted %}
+                                    <a href="/submit/{{ r.id }}" class="btn btn-success btn-sm py-0 px-2" onclick="return confirm('确认无误并正式提交吗？提交后不可修改。')">提交</a>
+                                    <a href="/delete/{{ r.id }}" class="btn btn-danger btn-sm py-0 px-2 ml-1" onclick="return confirm('确认删除此草稿？')">删除</a>
+                                {% else %}
+                                    <span class="badge badge-light border text-muted">已入库</span>
+                                    {% if current_user.role == 'admin' %}
+                                        <a href="/delete/{{ r.id }}" class="text-danger ml-2" onclick="return confirm('管理员操作：确认强制删除此归档记录？')" title="强制删除">&times;</a>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="text-muted py-3">暂无记录</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const $machineSelect = $('#machineTypeSelect');
+            const $sbSwitch = $('#sbSwitch');
+            const $sbLabel = $('#sbLabel');
+
+            function updateSwitchState() {
+                const val = $machineSelect.val();
+
+                $sbSwitch.prop('disabled', false);
+                $sbLabel.text("是否自粘");
+                $sbLabel.removeClass('text-muted text-success');
+
+                if (['2', '3', '4'].includes(val)) {
+                    $sbSwitch.prop('checked', false);
+                    $sbSwitch.prop('disabled', true);
+                    $sbLabel.text("普通 (锁定)");
+                    $sbLabel.addClass('text-muted');
+                } else if (val === '5') {
+                    $sbSwitch.prop('checked', true);
+                    $sbSwitch.prop('disabled', true);
+                    $sbLabel.text("自粘 (锁定)");
+                    $sbLabel.addClass('text-success');
+                }
+            }
+
+            $machineSelect.on('change', updateSwitchState);
+            updateSwitchState();
+        });
+    </script>
 </body>
 </html>
