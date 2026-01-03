@@ -25,7 +25,7 @@
         .side-badge { display: inline-block; width: 20px; text-align: center; border-radius: 3px; color: #fff; font-size: 0.75rem; margin-right: 5px; }
         .badge-a { background-color: #007bff; }
         .badge-b { background-color: #ff9800; }
-        .badge-round { background-color: #17a2b8; } /* 圆线专用颜色 */
+        .badge-round { background-color: #17a2b8; }
 
         .d-none-custom { display: none !important; }
 
@@ -41,7 +41,8 @@
     <nav class="navbar navbar-dark bg-dark mb-3 py-2">
         <div class="container-fluid">
             <div>
-                <span class="navbar-brand mb-0 h1" style="font-size: 1.1rem;"><i class="fas fa-industry mr-2"></i>漆包线生产工艺模型</span>
+                <a class="navbar-brand mb-0 h1 text-warning" href="/"><i class="fas fa-industry mr-2"></i>生产记录系统</a>
+                <a class="navbar-brand mb-0 h1 text-white-50" href="/raw_lab" style="font-size: 1rem; margin-left: 20px;"><i class="fas fa-flask mr-2"></i>裸线实验室</a>
             </div>
 
             {% if current_user.is_authenticated %}
@@ -340,7 +341,6 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // JS回填辅助
         var lastBase = "{{ last_data.base_coat_type if last_data else '无' }}";
         var lastMid = "{{ last_data.mid_coat_type if last_data else '无' }}";
         var lastTop = "{{ last_data.top_coat_type if last_data else '无' }}";
@@ -419,39 +419,22 @@
         }
 
         function showFlatSpec() {
-            // 1. 规格输入框
             $('#specFlatGroup').removeClass('d-none-custom');
             $('#specRoundGroup').addClass('d-none-custom');
-
-            // 2. 标准参数 A/B 面复原
-            $('#rowBareB, #rowFinishedB, #rowFilmB').removeClass('d-none-custom'); // 显示B面
-
-            // 3. 标签复原为 A / B
+            $('#rowBareB, #rowFinishedB, #rowFilmB').removeClass('d-none-custom');
             $('.badge-dynamic-a').text('A').removeClass('badge-round').addClass('badge-a');
-
-            // 4. 标题复原
             $('#titleBare').text('半成品裸径');
             $('#titleFinished').text('成品线径 (≤)');
-            // 启用 B 面输入框 (防止提交脏数据可选，但后台兼容性好不必须)
             $('#rowBareB input, #rowFinishedB input, #rowFilmB input').prop('disabled', false);
         }
 
         function showRoundSpec() {
-            // 1. 规格输入框
             $('#specRoundGroup').removeClass('d-none-custom');
             $('#specFlatGroup').addClass('d-none-custom');
-
-            // 2. 标准参数：隐藏 B 面
             $('#rowBareB, #rowFinishedB, #rowFilmB').addClass('d-none-custom');
-
-            // 3. 标签变身为 Φ
             $('.badge-dynamic-a').text('Φ').removeClass('badge-a').addClass('badge-round');
-
-            // 4. 标题变身
             $('#titleBare').text('裸线直径');
             $('#titleFinished').text('成品外径 (≤)');
-
-            // 禁用 B 面输入框 (这样提交时不会带任何数据)
             $('#rowBareB input, #rowFinishedB input, #rowFilmB input').prop('disabled', true);
         }
 
@@ -485,7 +468,6 @@
                 $('#manualSBCheck').prop('checked', isSB);
             }
 
-            // 初始化判断圆扁
             if (fullSpec.includes('×') || fullSpec.includes('x') || fullSpec.includes('X')) {
                 const parts = fullSpec.split(/×|x|X/);
                 if (parts.length >= 2) {
@@ -554,7 +536,6 @@
             updateMachineOptions();
             initSpecAndSpeedAndSB();
 
-            // 漆包类型选“无”自动填0
             $('#baseCoatSelect, #midCoatSelect, #topCoatSelect').on('change', function() {
                 if ($(this).val() === '无') {
                     $(this).next('input').val(0);

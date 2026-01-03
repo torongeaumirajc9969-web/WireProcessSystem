@@ -7,7 +7,7 @@ import os
 import csv
 import io
 import json
-import re  # 用于提取数字
+import re
 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -67,6 +67,34 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+# 1. 裸线实验室记录表 (独立表，扁线专用版)
+class RawWireRecord(db.Model):
+    __tablename__ = 'raw_wire_record'
+    id = db.Column(db.Integer, primary_key=True)
+    create_time = db.Column(db.DateTime, default=datetime.now)
+    operator_name = db.Column(db.String(50))
+
+    # 实验环境
+    machine_model = db.Column(db.String(20))
+    ref_speed = db.Column(db.String(20))
+
+    # 核心数据 (输入 - 投料)
+    raw_size_a = db.Column(db.Float)  # 投料 A (宽)
+    raw_size_b = db.Column(db.Float)  # 投料 B (厚)
+    yield_strength = db.Column(db.Integer)
+
+    # 核心数据 (输出 - 去漆)
+    stripped_size_a = db.Column(db.Float)  # 去漆 A
+    stripped_size_b = db.Column(db.Float)  # 去漆 B
+
+    # 计算结果 (吃丝量)
+    draw_down_a = db.Column(db.Float)  # A面吃丝
+    draw_down_b = db.Column(db.Float)  # B面吃丝
+
+    remark = db.Column(db.Text)
+
+
+# 2. 生产工艺记录表 (原有)
 class ProcessRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     create_time = db.Column(db.DateTime, default=datetime.now)
@@ -388,6 +416,102 @@ def export_all():
     output.headers["Content-Disposition"] = "attachment; filename=production_log_v5.csv"
     output.headers["Content-type"] = "text/csv"
     return output
+
+
+# ==========================================
+#           模块二：裸线标准实验室 (扁线版)
+# ==========================================
+
+# 1. 实验室录入页面
+@app.route('/raw_lab', methods=['GET', 'POST'])
+@login_required
+def raw_lab():
+    if request.method == 'POST':
+        try:
+            # 获取 A/B 面数据
+            ra = float(request.form.get('raw_size_a'))
+            rb = float(request.form.get('raw_size_b'))
+            sa = float(request.form.get('stripped_size_a'))
+            sb = float(request.form.get('stripped_size_b'))
+
+            # 分别计算吃丝量
+            draw_a = ra - sa
+            draw_b = rb - sb
+        except:
+            draw_a = 0
+            draw_b = 0
+
+        new_test = RawWireRecord(
+            operator_name=current_user.username,
+            machine_model=request.form.get('machine_model'),
+            ref_speed=request.form.get('ref_speed'),
+            raw_size_a=ra,
+            raw_size_b=rb,
+            yield_strength=request.form.get('yield_strength'),
+            stripped_size_a=sa,
+            stripped_size_b=sb,
+            draw_down_a=draw_a,
+            draw_down_b=draw_b,
+            remark=request.form.get('remark')
+        )
+        db.session.add(new_test)
+        db.session.commit()
+        flash('扁线样本数据已录入', 'success')
+        return redirect(url_for('raw_lab'))
+
+    records = RawWireRecord.query.order_by(RawWireRecord.create_time.desc()).limit(20).all()
+    return render_template('raw_lab.html', records=records, current_user=current_user)
+
+
+# 2. 实验室分析看板
+@app.route('/raw_analysis')
+@login_required
+def raw_analysis():
+    records = RawWireRecord.query.all()
+
+    # 准备散点图数据 (分为 A组 和 B组)
+    # 屈服强度 vs 吃丝量
+    yield_data_a = []
+    yield_data_b = []
+
+    # 速度 vs 吃丝量
+    speed_data_a = []
+    speed_data_b = []
+
+    for r in records:
+        # 过滤无效数据
+        if r.draw_down_a is not None and r.draw_down_b is not None:
+            # 强度分析
+            if r.yield_strength:
+                yield_data_a.append({'x': r.yield_strength, 'y': round(r.draw_down_a, 4)})
+                yield_data_b.append({'x': r.yield_strength, 'y': round(r.draw_down_b, 4)})
+
+            # 速度分析
+            if r.ref_speed:
+                try:
+                    sp = float(r.ref_speed)
+                    speed_data_a.append({'x': sp, 'y': round(r.draw_down_a, 4)})
+                    speed_data_b.append({'x': sp, 'y': round(r.draw_down_b, 4)})
+                except:
+                    pass
+
+    return render_template('raw_analysis.html',
+                           current_user=current_user,
+                           yield_a=json.dumps(yield_data_a),
+                           yield_b=json.dumps(yield_data_b),
+                           speed_a=json.dumps(speed_data_a),
+                           speed_b=json.dumps(speed_data_b))
+
+
+# 3. 删除实验记录
+@app.route('/delete_raw/<int:id>')
+@login_required
+def delete_raw(id):
+    r = RawWireRecord.query.get_or_404(id)
+    db.session.delete(r)
+    db.session.commit()
+    flash('实验记录已删除', 'warning')
+    return redirect(url_for('raw_lab'))
 
 
 if __name__ == '__main__':
